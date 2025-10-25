@@ -11,6 +11,8 @@ globals [
   transmission-rate
   contamination-rate
   intervention-period
+  decolonization-rate-susceptible
+  decolonization-rate-resistant
 
   total-resistant-prevalence-pre
   total-resistant-prevalence-post
@@ -75,7 +77,8 @@ to setup
   set admission-rate 3.4
   set transmission-rate 0.45
   set contamination-rate 0.21
-
+  set decolonization-rate-susceptible 1 / 30
+  set decolonization-rate-resistant 1 / 30
 
   ;; create patients (num-patients is a slider we will add in the Interface)
   reset-ticks    ;; <-- must come BEFORE using ticks
@@ -188,15 +191,18 @@ to go
     ]
     ask patients [
       let d random-float 1
-      if d < discharge-rate [
+      if  d < discharge-rate [
         die
       ]
-      if random-float 1 < 1 / 30 [ ;; decolonization
+      if infected-status = "susceptible" and random-float 1 < decolonization-rate-susceptible [ ;; decolonization
         set infected-status "free"
-    ]
+      ]
+      if infected-status = "resistant" and random-float 1 < decolonization-rate-resistant [ ;; decolonization
+        set infected-status "free"
+      ]
     ]
     ask doctors [
-      set visiting-list shuffle [self] of patients
+      set visiting-list shuffle [self] of patients with [pcolor != blue]
       if cohort-status = true [
         set cohort-status false
       ]
@@ -257,7 +263,7 @@ to go
             ]
           ][
             if [infected-status] of patient-to-visit = "resistant" [
-              if random-float 1 < contamination-rate * antibiotic-consumption [
+              if random-float 1 < contamination-rate [
                 set contaminated-status "resistant"
                 set color red
                 set contamination-time ticks
@@ -274,7 +280,7 @@ to go
             ]
           ][
             if ([infected-status] of patient-to-visit = "free" and contaminated-status = "resistant") [
-              if random-float 1 < transmission-rate[
+              if random-float 1 < transmission-rate  * antibiotic-consumption[
                 ask patient-to-visit [
                   set infected-status "resistant"
                   set color red
@@ -913,10 +919,10 @@ NetLogo 6.3.0
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="76608"/>
-    <metric>ifelse-value (ticks &lt; start-intervention-period * day-length) [ total-resistant-prevalence-pre / ticks ] [0]</metric>
-    <metric>total-resistant-prevalence-post / (ticks - start-intervention-period * day-length)</metric>
-    <metric>intervention-period</metric>
-    <metric>ticks</metric>
+    <metric>day-counter</metric>
+    <metric>count patients with [infected-status = "free"] / count patients</metric>
+    <metric>count patients with [infected-status = "susceptible"] / count patients</metric>
+    <metric>count patients with [infected-status = "resistant"] / count patients</metric>
     <enumeratedValueSet variable="num-patients">
       <value value="30"/>
     </enumeratedValueSet>
